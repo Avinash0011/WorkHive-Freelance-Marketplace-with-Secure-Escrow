@@ -1,0 +1,212 @@
+// WorkHive Database Schema
+// All money fields are BigInt, stored in paise (₹1 = 100 paise)
+// Matches WorkHive-Technical-Architecture.md Section 4 exactly
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// === Enums ===
+
+enum Role {
+  client
+  freelancer
+}
+
+enum JobStatus {
+  draft
+  posted
+  assigned
+  escrowed
+  submitted
+  paid
+  cancelled
+}
+
+enum ProposalStatus {
+  pending
+  accepted
+  rejected
+  withdrawn
+}
+
+enum PaymentType {
+  escrow
+  release
+  refund
+}
+
+enum PaymentStatus {
+  pending
+  succeeded
+  failed
+}
+
+// === Models ===
+
+model User {
+  id                  String   @id @default(uuid()) @db.Uuid
+  email               String   @unique
+  password_hash       String
+  role                Role
+  name                String
+  headline            String?
+  skills              String[] @default([])
+  wallet_balance_paise BigInt  @default(0)
+  rating_avg          Decimal? @db.Decimal(3, 2)
+  created_at          DateTime @default(now()) @db.Timestamptz()
+
+  // Relations
+  jobs_created        Job[]      @relation("CreatorJobs")
+  jobs_hired          Job[]      @relation("FreelancerJobs")
+  proposals           Proposal[]
+  payments_as_job_owner Payment[] @relation("JobOwnerPayments")
+  reviews_given       Review[]   @relation("ReviewAuthor")
+  reviews_received    Review[]   @relation("ReviewTarget")
+  audit_logs          AuditLog[]
+  saved_jobs          SavedJob[]
+  client_contracts    Contract[] @relation("ClientContracts")
+  freelancer_contracts Contract[] @relation("FreelancerContracts")
+
+  @@map("users")
+}
+
+model Job {
+  id                  String    @id @default(uuid()) @db.Uuid
+  client_id           String    @db.Uuid
+  title               String
+  description         String
+  budget_paise        BigInt
+  skills_required     String[]  @default([])
+  deadline            DateTime? @db.Date
+  status              JobStatus @default(posted)
+  freelancer_id       String?   @db.Uuid
+  agreed_amount_paise BigInt?
+  delivery_note       String?
+  hired_at            DateTime? @db.Timestamptz()
+  escrowed_at         DateTime? @db.Timestamptz()
+  submitted_at        DateTime? @db.Timestamptz()
+  paid_at             DateTime? @db.Timestamptz()
+  created_at          DateTime  @default(now()) @db.Timestamptz()
+
+  // Relations
+  client              User       @relation("CreatorJobs", fields: [client_id], references: [id])
+  freelancer          User?      @relation("FreelancerJobs", fields: [freelancer_id], references: [id])
+  proposals           Proposal[]
+  payments            Payment[]
+  reviews             Review[]
+  saved_by            SavedJob[]
+  contract            Contract?
+
+  @@map("jobs")
+}
+
+model Proposal {
+  id              String         @id @default(uuid()) @db.Uuid
+  job_id          String         @db.Uuid
+  freelancer_id   String         @db.Uuid
+  amount_paise    BigInt
+  message         String
+  status          ProposalStatus @default(pending)
+  created_at      DateTime       @default(now()) @db.Timestamptz()
+
+  // Relations
+  job             Job  @relation(fields: [job_id], references: [id])
+  freelancer      User @relation(fields: [freelancer_id], references: [id])
+
+  // One proposal per worker per job
+  @@unique([job_id, freelancer_id])
+  @@map("proposals")
+}
+
+model Payment {
+  id                String        @id @default(uuid()) @db.Uuid
+  job_id            String        @db.Uuid
+  type              PaymentType
+  amount_paise      BigInt
+  platform_fee_paise BigInt?
+  idempotency_key   String        @unique
+  gateway_ref       String?
+  status            PaymentStatus @default(pending)
+  created_at        DateTime      @default(now()) @db.Timestamptz()
+
+  // Relations
+  job               Job  @relation(fields: [job_id], references: [id])
+  // Payment is linked to the job owner indirectly via job.client_id
+  // We also track for query convenience:
+  owner             User @relation("JobOwnerPayments", fields: [owner_id], references: [id])
+  owner_id          String @db.Uuid
+
+  @@map("payments")
+}
+
+model Review {
+  id            String   @id @default(uuid()) @db.Uuid
+  job_id        String   @db.Uuid
+  reviewer_id   String   @db.Uuid
+  reviewee_id   String   @db.Uuid
+  rating        Int      @db.SmallInt
+  comment       String?
+  created_at    DateTime @default(now()) @db.Timestamptz()
+
+  // Relations
+  job           Job  @relation(fields: [job_id], references: [id])
+  reviewer      User @relation("ReviewAuthor", fields: [reviewer_id], references: [id])
+  reviewee      User @relation("ReviewTarget", fields: [reviewee_id], references: [id])
+
+  // One review per user per job
+  @@unique([job_id, reviewer_id])
+  @@map("reviews")
+}
+
+model AuditLog {
+  id            String   @id @default(uuid()) @db.Uuid
+  actor_id      String   @db.Uuid
+  action        String
+  entity_type   String
+  entity_id     String   @db.Uuid
+  metadata      Json?
+  created_at    DateTime @default(now()) @db.Timestamptz()
+
+  // Relations
+  actor         User @relation(fields: [actor_id], references: [id])
+
+  @@map("audit_log")
+}
+
+model SavedJob {
+  id        String   @id @default(uuid()) @db.Uuid
+  user_id   String   @db.Uuid
+  job_id    String   @db.Uuid
+  created_at DateTime @default(now()) @db.Timestamptz()
+
+  // Relations
+  user      User @relation(fields: [user_id], references: [id])
+  job       Job  @relation(fields: [job_id], references: [id])
+
+  @@unique([user_id, job_id])
+  @@map("saved_jobs")
+}
+
+model Contract {
+  id                  String   @id @default(uuid()) @db.Uuid
+  job_id              String   @unique @db.Uuid
+  client_id           String   @db.Uuid
+  freelancer_id       String   @db.Uuid
+  agreed_amount_paise BigInt
+  status              String   @default("active")
+  created_at          DateTime @default(now()) @db.Timestamptz()
+  updated_at          DateTime @updatedAt @db.Timestamptz()
+
+  // Relations
+  job                 Job  @relation(fields: [job_id], references: [id])
+  client              User @relation("ClientContracts", fields: [client_id], references: [id])
+  freelancer          User @relation("FreelancerContracts", fields: [freelancer_id], references: [id])
+
+  @@map("contracts")
+}
