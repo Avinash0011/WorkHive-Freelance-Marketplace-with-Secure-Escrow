@@ -109,7 +109,6 @@ export default function PostJob() {
       const finalData = {
         ...data,
         skills_required: skills,
-        budget_paise: Number(parseCurrency(data.budget_paise?.toString() || '0')) * 100,
         payment_type: paymentType,
       };
       await apiClient.post('/jobs', finalData);
@@ -408,7 +407,7 @@ export default function PostJob() {
                   {...register('budget_paise', {
                     setValueAs: (v) => {
                       const num = Number(String(v).replace(/,/g, ''));
-                      return Number.isNaN(num) ? undefined : num;
+                      return Number.isNaN(num) ? undefined : num * 100;
                     },
                   })}
                   type="text"
