@@ -42,7 +42,7 @@ function loadEnv() {
       ...process.env,
       JWT_ACCESS_SECRET: process.env.JWT_ACCESS_SECRET || 'dev-access-secret-change-in-production-32chars',
       JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET || 'dev-refresh-secret-change-in-production-32chars',
-      DATABASE_URL: process.env.DATABASE_URL || 'postgresql://workhive:workhive_dev@localhost:5432/workhive',
+      DATABASE_URL: process.env.DATABASE_URL || 'postgresql://workhive:workhive_dev@localhost:5433/workhive',
     });
   }
   return parsed.data;

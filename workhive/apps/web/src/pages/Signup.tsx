@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { signupSchema } from '@workhive/shared';
@@ -8,11 +8,8 @@ import { useAuthStore } from '../stores/authStore';
 
 export default function Signup() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
   const { register: registerUser } = useAuthStore();
-  const [selectedRole, setSelectedRole] = useState<Role | null>(
-    (searchParams.get('role') as Role) || null
-  );
+  const [selectedRole, setSelectedRole] = useState<Role | null>(null);
   const [skills, setSkills] = useState<string[]>([]);
   const [skillInput, setSkillInput] = useState('');
 
@@ -20,21 +17,12 @@ export default function Signup() {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-    watch,
   } = useForm<SignupInput>({
     resolver: zodResolver(signupSchema),
     defaultValues: {
-      role: selectedRole || 'client',
+      role: undefined,
     },
   });
-
-  const watchedRole = watch('role');
-
-  useEffect(() => {
-    if (watchedRole && !selectedRole) {
-      setSelectedRole(watchedRole);
-    }
-  }, [watchedRole, selectedRole]);
 
   const addSkill = () => {
     if (skillInput.trim() && !skills.includes(skillInput.trim()) && skills.length < 20) {
