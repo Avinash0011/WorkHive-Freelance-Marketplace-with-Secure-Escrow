@@ -1,6 +1,5 @@
 import { prisma } from '../lib/prisma';
 import { ApiError } from '../middleware/error-handler.middleware';
-import type { Review } from '@prisma/client';
 import type { CreateReviewInput } from '@workhive/shared';
 
 export const reviewService = {
@@ -54,7 +53,7 @@ export const reviewService = {
       where: { reviewee_id: revieweeId }
     });
 
-    const avgRating = allReviews.reduce((sum: number, r: Review) => sum + r.rating, 0) / allReviews.length;
+    const avgRating = allReviews.reduce((sum: number, r: { rating: number }) => sum + r.rating, 0) / allReviews.length;
 
     await prisma.user.update({
       where: { id: revieweeId },
