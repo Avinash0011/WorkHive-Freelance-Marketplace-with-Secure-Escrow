@@ -51,13 +51,13 @@ function loadEnv() {
 export const env = loadEnv();
 export type Env = z.infer<typeof envSchema>;
 
-// Validate Razorpay configuration in production
+// Warn about missing Razorpay configuration in production
 if (env.NODE_ENV === 'production') {
   if (!env.RAZORPAY_KEY_ID || !env.RAZORPAY_KEY_SECRET) {
-    throw new Error('RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET are required in production');
+    console.warn('WARNING: RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET are not set. Payment features will be disabled.');
   }
   if (!env.RAZORPAY_WEBHOOK_SECRET) {
-    throw new Error('RAZORPAY_WEBHOOK_SECRET is required in production');
+    console.warn('WARNING: RAZORPAY_WEBHOOK_SECRET is not set. Webhook verification will be disabled.');
   }
 }
 
