@@ -20,8 +20,22 @@ export function createApp(): Express {
 
   // Security middleware
   app.use(helmet());
+  const allowedOrigins = [
+    env.FRONTEND_URL,
+    // Remove trailing slash if present
+    env.FRONTEND_URL.replace(/\/$/, ''),
+  ];
+
   app.use(cors({
-    origin: env.FRONTEND_URL,
+    origin: (origin, callback) => {
+      // Allow requests with no origin (mobile apps, curl, etc.)
+      if (!origin) return callback(null, true);
+      // Allow configured frontend URL
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+      // Allow all Vercel preview deployments for this project
+      if (origin.endsWith('.vercel.app')) return callback(null, true);
+      callback(new Error('Not allowed by CORS'));
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
     maxAge: 86400,

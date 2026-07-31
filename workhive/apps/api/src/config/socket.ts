@@ -6,9 +6,19 @@ import { authenticateSocket } from '../middleware/socket-auth.middleware';
 let io: SocketIOServer | null = null;
 
 export function initializeSocket(httpServer: HTTPServer) {
+  const allowedOrigins = [
+    env.FRONTEND_URL,
+    env.FRONTEND_URL.replace(/\/$/, ''),
+  ];
+
   io = new SocketIOServer(httpServer, {
     cors: {
-      origin: env.FRONTEND_URL,
+      origin: (origin, callback) => {
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.includes(origin)) return callback(null, true);
+        if (origin.endsWith('.vercel.app')) return callback(null, true);
+        callback(new Error('Not allowed by CORS'));
+      },
       credentials: true,
     },
   });
