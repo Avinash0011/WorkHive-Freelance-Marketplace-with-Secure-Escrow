@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { ApiError } from '../middleware/error-handler.middleware';
 import { emitToUser } from '../config/socket';
@@ -147,7 +148,7 @@ export const proposalService = {
     }
 
     // Use transaction for hire-lock
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // Lock the job row
       const lockedJob = await tx.job.findUnique({
         where: { id: proposal.job_id },
