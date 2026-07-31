@@ -4,8 +4,8 @@
   "version": "1.0.0",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "tsc",
-    "start": "node dist/server.js",
+    "build": "prisma generate && tsc --noEmit",
+    "start": "tsx src/server.ts",
     "lint": "tsc --noEmit",
     "db:migrate": "prisma migrate dev",
     "db:seed": "prisma db seed",
